@@ -46,4 +46,4 @@ sudo ./DbusSmsForward -sS
 
 # 参考
 1. [ModemManager API document](https://www.freedesktop.org/software/ModemManager/api/latest/)
-2. [ChatGPT]
+2. ChatGPT
