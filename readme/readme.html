@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+
+    <link rel="stylesheet" type="text/css" href="stylesheet.css" media="screen">
+
+    <title>入门</title>
+  </head>
+
+<body>
+
+    <div class="container">
+        <div id="header">
+            <h1>入门</h1>
+            <h2>适用于 Linux 开发的 Visual C++</h2>
+        </div>
+    
+    <table>
+    <tr>    
+    <div id="main_content">
+        
+        <td>
+        <div id="lpanel">
+            <h1>设置用于 Linux 开发的项目</h1>
+
+            <p>使用此工作负荷，可创作适用于 Linux 服务器、桌面和设备的 C++ 代码。可从 VS 中管理与这些计算机的连接。VS 将自动复制和远程生成源，并可使用调试器启动应用程序。我们的项目系统支持以特定体系结构(包括 ARM)为目标。</p>
+            <img src="images\ArchOptions.gif"/>
+            
+            <h1>正在连接到 Linux</h1>
+            <h2>先决条件</h2>
+            <p>现在仅支持在 Linux 目标计算机上远程构建。我们不受特定 Linux 发行版的限制，但确实依赖于某些工具的存在。具体说来，我们需要 openssh-server、g++、gdb 和 gdbserver。请使用你喜爱的包管理器安装它们，例如，在基于 Debian 的系统上，可以使用 sudo apt-get install openssh-server g++ gdb gdbserver</p>
+            
+            <h2>第一个连接</h2>
+            <p>第一次以 Linux 计算机为目标时，系统将提示你输入连接信息。此操作由生成项目触发。</p>
+            <img src="images\firstconnection.png"/>
+                
+            <h2>添加和删除连接</h2>
+            <p>若要添加新连接，请转到“工具”>“选项”并搜索“连接”，连接管理器将显示在“跨平台”下。可从此处添加和移除连接。</p>
+            <img src="images\ManageConnections.gif"/>
+            
+            <p>若要更改项目使用的连接，请转到项目属性常规设置并更新“远程生成计算机”选项。</p>
+            <img src="images\ChangeRemote.gif"/>
+            
+            <h1>项目属性</h1>
+            <p>控制 C++ 编译所需的所有选项都在项目属性页上公开。我们将具体介绍 Linux 的一些工作原理。在常规设置下，你将看到远程根已默认设置为 ~/projects/，我们要将远程项目目录设置为与该位置的项目名称匹配。</p>
+            <img src="images\OutputTypes.gif"/>
+            
+            <p>查看项目的“常规设置”，可以看到输出目录和中间目录的配置情况。此外，还会看到此项目已配置为应用程序，因此可执行文件位于 bin/x64/Debug/ 下，名为 ConsoleApplication1.out。请注意，对于配置类型，我们也支持静态和动态库。</p>
+            
+            <p>在“链接器”>“输入属性”页上添加其他库依赖项。</p>
+            <img src="images\linker.png"/>
+            
+            <p>可将额外的预启动命令传递给调试器，以执行在远程 linux 计算机上启动图形应用等操作。</p>
+            <img src="images\debuggerexport.png"/>
+            
+            <p>还可发送生成后事件以控制远程行为，比如在本例中，导出 gpio pin 以便在不要求可执行文件以超级用户身份运行的情况下使用。</p>
+            <img src="images\postbuild.png"/>
+            
+        </div>
+        </td>
+        <td>
+        <div id="rpanel">
+
+            <h1>资源</h1>
+
+            <p>请查看 <a href="http://aka.ms/vslinux">VC++ for Linux 开发页</a>，我们将持续发布更新并提供更多深入介绍使用方法的详细信息。</p>
+            <h1>给我们提供反馈</h1>
+            <p>使用 Visual Studio 中的发送反馈功能，或通过<a href=" https://developercommunity.visualstudio.com/">开发人员社区</a>与我们联系</p>
+        </div>
+        </td>   
+    </div>
+    </tr>
+    </table>
+    </div>
+</body>
+</html>
