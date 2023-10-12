@@ -131,7 +131,6 @@ std::map<std::string, std::string> readConfigFile(const std::string& filename) {
     }
     return configMap;
 }
-
 // 将配置项写入配置文件
 void writeConfigFile(const std::string& filename, const std::map<std::string, std::string>& configMap) {
     std::ofstream configFileClear(filename, std::ofstream::trunc);
@@ -206,9 +205,7 @@ void sendByEmail(std::string smsnumber, std::string smstext, std::string smsdate
 
     std::string subject = "短信转发" + smsnumber;
     std::string smtpserver = "smtps://" + smtpHost ;
-    printf(smtpserver.c_str());
-    
-
+    //printf(smtpserver.c_str());
     std::string from = sendEmial;
     std::string passs = emailKey;//这里替换成自己的授权码
     std::string to = reciveEmial;
@@ -228,10 +225,6 @@ void sendByEmail(std::string smsnumber, std::string smstext, std::string smsdate
     base = &m_ssl_mail;
     base->SendEmail(from, passs, to, subject, strMessage);
     //base->SendEmail(from, passs, vecTo, subject, strMessage, attachment, ccList);//加密的发送，支持抄送、附件等
-
-
-
-
 
 
     /*std::string smtp_server { smtpHost };
@@ -677,9 +670,9 @@ void sendByDingtalkBot(std::string smsnumber, std::string smstext, std::string s
                 std::cout << "Failed to parse JSON. Error code: " << doc.GetParseError() << ", "
                     << rapidjson::GetParseError_En(doc.GetParseError()) << std::endl;
             }
-            std::string errcode1 = doc["errcode"].GetString();
+            int errcode1 = doc["errcode"].GetInt();
             std::string errmsg1 = doc["errmsg"].GetString();
-            if (errcode1 == "0" && errmsg1 == "ok")
+            if (errcode1 == 0 && errmsg1 == "ok")
             {
                 printf("钉钉转发成功\n");
             }
@@ -743,16 +736,14 @@ void sendByBark(std::string smsnumber, std::string smstext, std::string smsdate)
                 std::cout << "Failed to parse JSON. Error code: " << doc.GetParseError() << ", "
                     << rapidjson::GetParseError_En(doc.GetParseError()) << std::endl;
             }
-            std::string status = doc["code"].GetString();
-            if (status == "200")
+            int status = doc["code"].GetInt();
+            if (status == 200)
             {
                 printf("Bark转发成功\n");
             }
             else
             {
-                std::string rcode = doc["code"].GetString();
                 std::string rmsg = doc["message"].GetString();
-                printf(rcode.c_str());
                 printf(rmsg.c_str());
                
             }
@@ -1118,7 +1109,7 @@ int main(int argc, char* argv[])
         // 断开DBus连接
         dbus_connection_unref(connection);
     }
-    else if (StartGuideResult == "2") {
+    else if (StartGuideResult == "2") {  //以下为调用dbus发送短信
         printf("请输入收信号码：\n");
         std::string telNumber = "";
         std::getline(std::cin, telNumber);
