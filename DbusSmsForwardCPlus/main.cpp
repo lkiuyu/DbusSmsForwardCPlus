@@ -5,15 +5,6 @@
 #include <curl/curl.h>
 #include <fstream> 
 #include <map>
-#include <Poco/Net/MailMessage.h>
-#include <Poco/Net/SMTPClientSession.h>
-#include <Poco/Net/SecureSMTPClientSession.h>
-#include <Poco/Net/NetException.h>
-#include <Poco/JSON/Parser.h>
-#include <Poco/JSON/Object.h>
-#include <Poco/JSON/Query.h>
-#include <Poco/JSON/Stringifier.h>
-#include <Poco/URI.h>
 #include <chrono>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -22,7 +13,12 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-
+#include "mail.h"
+#include <cassert>
+#include "rapidjson/document.h"
+#include "rapidjson/error/en.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
 std::string trim(std::string strinput)
 {
     if (!strinput.empty())
@@ -32,14 +28,19 @@ std::string trim(std::string strinput)
     }
     return strinput;
 }
-
+void replaceChar(std::string& str, char targetChar, char replacementChar) {
+    for (char& c : str) {
+        if (c == targetChar) {
+            c = replacementChar;
+        }
+    }
+}
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* response)
 {
     size_t totalSize = size * nmemb;
     response->append(static_cast<char*>(contents), totalSize);
     return totalSize;
 }
-
 unsigned char ToHex(unsigned char x)
 {
     return  x > 9 ? x + 55 : x + 48;
@@ -203,7 +204,37 @@ void sendByEmail(std::string smsnumber, std::string smstext, std::string smsdate
     std::string reciveEmial = configMap["reciveEmial"];
     std::string emailcontent = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
 
-    std::string smtp_server { smtpHost };
+    std::string subject = "短信转发" + smsnumber;
+    std::string smtpserver = "smtps://" + smtpHost ;
+    printf(smtpserver.c_str());
+    
+
+    std::string from = sendEmial;
+    std::string passs = emailKey;//这里替换成自己的授权码
+    std::string to = reciveEmial;
+    std::string strMessage = emailcontent;
+    std::vector<std::string> vecTo; //发送列表
+    vecTo.push_back(reciveEmial);
+    std::vector<std::string> ccList;
+    // ccList.push_back("xxx@xxx.com.cn");//抄送列表
+    std::vector<std::string> attachment;
+
+    SmtpBase* base;
+    //SimpleSmtpEmail m_mail(smtpHost, configMap["smtpPort"]);
+   // base = &m_mail;
+   // base->SendEmail(from, passs, to, subject, strMessage);//普通的文本发送，明文发送
+
+    SimpleSslSmtpEmail m_ssl_mail(smtpHost, "465");
+    base = &m_ssl_mail;
+    base->SendEmail(from, passs, to, subject, strMessage);
+    //base->SendEmail(from, passs, vecTo, subject, strMessage, attachment, ccList);//加密的发送，支持抄送、附件等
+
+
+
+
+
+
+    /*std::string smtp_server { smtpHost };
     int port{ smtpPort }; 
     std::string
         sender { sendEmial }, 
@@ -226,7 +257,7 @@ void sendByEmail(std::string smsnumber, std::string smstext, std::string smsdate
     catch (Poco::Net::NetException& e) {
         std::cerr << "error: " << e.displayText() << std::endl;
     }
-    std::cout << "email sent successfully!" << std::endl;
+    std::cout << "email sent successfully!" << std::endl;*/
 
 }
 
@@ -274,12 +305,15 @@ void sendByPushPlus(std::string smsnumber, std::string smstext, std::string smsd
         CURLcode res = curl_easy_perform(curl);
         if (res == CURLE_OK)
         {
-            Poco::JSON::Parser parser;
-            Poco::Dynamic::Var result = parser.parse(response);
-            Poco::JSON::Object::Ptr responseObject = result.extract<Poco::JSON::Object::Ptr>();
-            std::string code = responseObject->getValue<std::string>("code");
-            std::string errmsg = responseObject->getValue<std::string>("msg");
-            if (code == "200")
+            rapidjson::Document doc;
+            doc.Parse(response.c_str());
+            if (doc.HasParseError()) {
+                std::cout << "Failed to parse JSON. Error code: " << doc.GetParseError() << ", "
+                    << rapidjson::GetParseError_En(doc.GetParseError()) << std::endl;
+            }
+            int code = doc["code"].GetInt();
+            std::string errmsg = doc["msg"].GetString(); 
+            if (code == 200)
             {
                 printf("pushplus转发成功\n");
             }
@@ -352,31 +386,47 @@ void sendByWeCom(std::string smsnumber, std::string smstext, std::string smsdate
         CURLcode res = curl_easy_perform(curl);
         if (res == CURLE_OK)
         {
-            Poco::JSON::Parser parser;
-            Poco::Dynamic::Var result = parser.parse(response);
-            Poco::JSON::Object::Ptr responseObject = result.extract<Poco::JSON::Object::Ptr>();
-            std::string errcode = responseObject->getValue<std::string>("errcode");
-            std::string errmsg = responseObject->getValue<std::string>("errmsg");
-            if (errcode == "0"&& errmsg=="ok")
+            rapidjson::Document doc;
+            doc.Parse(response.c_str());
+            if (doc.HasParseError()) {
+                std::cout << "Failed to parse JSON. Error code: " << doc.GetParseError() << ", "
+                    << rapidjson::GetParseError_En(doc.GetParseError()) << std::endl;
+            }
+            int errcode = doc["errcode"].GetInt();
+            std::string errmsg = doc["errmsg"].GetString();
+            if (errcode == 0 && errmsg=="ok")
             {
-                std::string access_token = responseObject->getValue<std::string>("access_token");
-                Poco::JSON::Object jobj;
-                Poco::JSON::Object jobj1;
-                jobj.set("touser", "@all");
-                jobj.set("toparty", "");
-                jobj.set("totag", "");
-                jobj.set("msgtype", "text");
-                jobj.set("agentid", agentid);
-                jobj1.set("content", "短信转发\n" + smscontent);
-                jobj.set("text", jobj1);
-                jobj.set("safe", 0);
-                jobj.set("enable_id_trans",0);
-                jobj.set("enable_duplicate_check", 0);
-                jobj.set("duplicate_check_interval", 1800);
+                std::string access_token = doc["access_token"].GetString();
+                rapidjson::Document jobj;
+                jobj.SetObject();
+                // 添加键值对
+                rapidjson::Document::AllocatorType& allocator = jobj.GetAllocator();
+                jobj.AddMember("touser", "@all", allocator);
+                jobj.AddMember("toparty", "", allocator);
+                jobj.AddMember("totag", "", allocator);
+                jobj.AddMember("msgtype", "text", allocator);
+                jobj.AddMember("agentid", agentid, allocator);
+
+                rapidjson::Document jobj1;
+                jobj1.SetObject();
+                // 添加键值对
+                rapidjson::Document::AllocatorType& allocator1 = jobj1.GetAllocator();
+                std::string smsbody = "短信转发\n" + smscontent;
+                rapidjson::Value v(rapidjson::kStringType);
+                v.SetString(smsbody.c_str(), smsbody.length(), allocator1);
+                jobj1.AddMember("content", v, allocator1);
+                jobj.AddMember("text", jobj1, allocator);
+                jobj.AddMember("safe", 0, allocator);
+                jobj.AddMember("enable_id_trans", 0, allocator);
+                jobj.AddMember("enable_duplicate_check", 0, allocator);
+                jobj.AddMember("duplicate_check_interval", 1800, allocator);
+               
                 std::string msgurl = "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=" + access_token;
-                std::ostringstream jsonStream;
-                Poco::JSON::Stringifier::stringify(jobj, jsonStream);
-                std::string jsonData = jsonStream.str();
+                rapidjson::StringBuffer buffer;
+                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                jobj.Accept(writer);
+                std::string jsonData = buffer.GetString();
+
                 CURL* curl2 = curl_easy_init();
                 if (curl2) {
                     // 设置POST请求的URL和数据
@@ -390,12 +440,15 @@ void sendByWeCom(std::string smsnumber, std::string smstext, std::string smsdate
                     // 执行HTTP请求
                     CURLcode res2 = curl_easy_perform(curl2);
                     if (res2 == CURLE_OK) {
-                        Poco::JSON::Parser parser2;
-                        Poco::Dynamic::Var result2 = parser2.parse(response2);
-                        Poco::JSON::Object::Ptr responseObject2 = result2.extract<Poco::JSON::Object::Ptr>();
-                        std::string errcode1 = responseObject2->getValue<std::string>("errcode");
-                        std::string errmsg1 = responseObject2->getValue<std::string>("errmsg");
-                        if (errcode1 == "0" && errmsg1 == "ok")
+                        rapidjson::Document doc2;
+                        doc2.Parse(response2.c_str());
+                        if (doc2.HasParseError()) {
+                            std::cout << "Failed to parse JSON. Error code: " << doc2.GetParseError() << ", "
+                                << rapidjson::GetParseError_En(doc2.GetParseError()) << std::endl;
+                        }
+                        int errcode1 = doc2["errcode"].GetInt();
+                        std::string errmsg1 = doc2["errmsg"].GetString();
+                        if (errcode1 == 0 && errmsg1 == "ok")
                         {
                             printf("企业微信转发成功\n");
                         }
@@ -494,6 +547,9 @@ void sendByTGBot(std::string smsnumber, std::string smstext, std::string smsdate
     url += "/bot" + TGBotToken + "/sendMessage?chat_id=" + TGBotChatID + "&text=";
     std::string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
     url += UrlEncode("短信转发\n" + content);
+
+    //std::cout << url << std::endl;
+
     CURL* curl = curl_easy_init();
     if (curl) {
         // 设置Get请求的URL和数据
@@ -505,18 +561,21 @@ void sendByTGBot(std::string smsnumber, std::string smstext, std::string smsdate
         // 执行HTTP请求
         CURLcode res = curl_easy_perform(curl);
         if (res == CURLE_OK) {
-            Poco::JSON::Parser parser;
-            Poco::Dynamic::Var result = parser.parse(response);
-            Poco::JSON::Object::Ptr responseObject = result.extract<Poco::JSON::Object::Ptr>();
-            std::string status = responseObject->getValue<std::string>("ok");
-            if (status == "true"|| status == "True")
+            rapidjson::Document doc;
+            doc.Parse(response.c_str());
+            if (doc.HasParseError()) {
+                std::cout << "Failed to parse JSON. Error code: " << doc.GetParseError() << ", "
+                    << rapidjson::GetParseError_En(doc.GetParseError()) << std::endl;
+            }
+            bool status = doc["ok"].GetBool();
+            if (status)
             {
                 printf("TGBot转发成功\n");
             }
             else
             {
-                printf(responseObject->getValue<std::string>("error_code").c_str());
-                printf(responseObject->getValue<std::string>("description").c_str());
+                std::string description = doc["description"].GetString();
+                printf(description.c_str());
             }
         }
         curl_easy_cleanup(curl);
@@ -577,14 +636,24 @@ void sendByDingtalkBot(std::string smsnumber, std::string smstext, std::string s
     std::string sign = UrlEncodeUTF8(base64result);
     url += "&timestamp=" + timestamp1 + "&sign="+ sign;
     std::string smscontent = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
-    Poco::JSON::Object msgContent;
-    msgContent.set("content", "短信转发\n" + smscontent);
-    Poco::JSON::Object msgObj;
-    msgObj.set("msgtype", "text");
-    msgObj.set("text", msgContent);
-    std::ostringstream jsonStream;
-    Poco::JSON::Stringifier::stringify(msgObj, jsonStream);
-    std::string jsonData = jsonStream.str();
+    rapidjson::Document msgContent;
+    msgContent.SetObject();
+    // 添加键值对
+    rapidjson::Document::AllocatorType& allocator = msgContent.GetAllocator();
+    std::string smsbody = "短信转发\n" + smscontent;
+    rapidjson::Value v(rapidjson::kStringType);
+    v.SetString(smsbody.c_str(), smsbody.length(), allocator);
+    msgContent.AddMember("content", v, allocator);
+    rapidjson::Document msgObj;
+    msgObj.SetObject();
+    // 添加键值对
+    rapidjson::Document::AllocatorType& allocator1 = msgObj.GetAllocator();
+    msgObj.AddMember("msgtype", "text", allocator1);
+    msgObj.AddMember("text", msgContent, allocator1);
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    msgObj.Accept(writer);
+    std::string jsonData = buffer.GetString();
     CURL* curl = curl_easy_init();
     if (curl) {
         // 设置POST请求的URL和数据
@@ -602,11 +671,14 @@ void sendByDingtalkBot(std::string smsnumber, std::string smstext, std::string s
         // 执行HTTP请求
         CURLcode res = curl_easy_perform(curl);
         if (res == CURLE_OK) {
-            Poco::JSON::Parser parser;
-            Poco::Dynamic::Var result = parser.parse(response);
-            Poco::JSON::Object::Ptr responseObject = result.extract<Poco::JSON::Object::Ptr>();
-            std::string errcode1 = responseObject->getValue<std::string>("errcode");
-            std::string errmsg1 = responseObject->getValue<std::string>("errmsg");
+            rapidjson::Document doc;
+            doc.Parse(response.c_str());
+            if (doc.HasParseError()) {
+                std::cout << "Failed to parse JSON. Error code: " << doc.GetParseError() << ", "
+                    << rapidjson::GetParseError_En(doc.GetParseError()) << std::endl;
+            }
+            std::string errcode1 = doc["errcode"].GetString();
+            std::string errmsg1 = doc["errmsg"].GetString();
             if (errcode1 == "0" && errmsg1 == "ok")
             {
                 printf("钉钉转发成功\n");
@@ -665,18 +737,23 @@ void sendByBark(std::string smsnumber, std::string smstext, std::string smsdate)
         // 执行HTTP请求
         CURLcode res = curl_easy_perform(curl);
         if (res == CURLE_OK) {
-            Poco::JSON::Parser parser;
-            Poco::Dynamic::Var result = parser.parse(response);
-            Poco::JSON::Object::Ptr responseObject = result.extract<Poco::JSON::Object::Ptr>();
-            std::string status = responseObject->getValue<std::string>("code");
+            rapidjson::Document doc;
+            doc.Parse(response.c_str());
+            if (doc.HasParseError()) {
+                std::cout << "Failed to parse JSON. Error code: " << doc.GetParseError() << ", "
+                    << rapidjson::GetParseError_En(doc.GetParseError()) << std::endl;
+            }
+            std::string status = doc["code"].GetString();
             if (status == "200")
             {
                 printf("Bark转发成功\n");
             }
             else
             {
-                printf(responseObject->getValue<std::string>("code").c_str());
-                printf(responseObject->getValue<std::string>("message").c_str());
+                std::string rcode = doc["code"].GetString();
+                std::string rmsg = doc["message"].GetString();
+                printf(rcode.c_str());
+                printf(rmsg.c_str());
                
             }
         }
@@ -738,7 +815,7 @@ void sendSms(std::string sendMethodGuideResult, std::string telnum, std::string 
 {
     char target = 'T';
     char replacement = ' ';
-    std::replace(smsdate.begin(), smsdate.end(), target, replacement);
+    replaceChar(smsdate, target, replacement);
     std::string body = "发信电话:" + telnum + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smscontent + "\n";
     printf(body.c_str());
     if (sendMethodGuideResult == "1")
