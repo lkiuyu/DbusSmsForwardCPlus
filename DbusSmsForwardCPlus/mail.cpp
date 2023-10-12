@@ -422,7 +422,7 @@ int SmtpEmail::Connect()
     inAddrInfo.ai_family = AF_INET;
     inAddrInfo.ai_socktype = SOCK_STREAM;
 
-    printf("host:%s port:%s \n", m_host.c_str(), m_port.c_str());
+    //printf("host:%s port:%s \n", m_host.c_str(), m_port.c_str());
     if (getaddrinfo(m_host.c_str(), m_port.c_str(), &inAddrInfo, &m_addrinfo) != 0) // error occurs
     {
 
