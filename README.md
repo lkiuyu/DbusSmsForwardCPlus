@@ -17,31 +17,31 @@ sudo ./DbusSmsForwardCPlus
 5.带参数运行跳过程序初始的运行模式选择以达到快速运行程序
 
 输入
-sudo ./DbusSmsForward -fE
+sudo ./DbusSmsForwardCPlus -fE
 跳过运行模式选择直接进入邮箱转发模式
 
 输入
-sudo ./DbusSmsForward -fP
+sudo ./DbusSmsForwardCPlus -fP
 跳过运行模式选择直接进入PushPlus转发模式
 
 输入
-sudo ./DbusSmsForward -fW
+sudo ./DbusSmsForwardCPlus -fW
 跳过运行模式选择直接进入企业微信转发模式
 
 输入
-sudo ./DbusSmsForward -fT
+sudo ./DbusSmsForwardCPlus -fT
 跳过运行模式选择直接进入TGBot转发模式
 
 输入
-sudo ./DbusSmsForward -fD
+sudo ./DbusSmsForwardCPlus -fD
 跳过运行模式选择直接进入钉钉转发模式
 
 输入
-sudo ./DbusSmsForward -fB
+sudo ./DbusSmsForwardCPlus -fB
 跳过运行模式选择直接进入Bark转发模式
 
 输入
-sudo ./DbusSmsForward -sS
+sudo ./DbusSmsForwardCPlus -sS
 跳过运行模式选择直接进入短信发送界面
 
 # 参考
