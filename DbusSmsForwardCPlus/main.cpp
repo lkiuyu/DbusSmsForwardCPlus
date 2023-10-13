@@ -19,6 +19,7 @@
 #include "rapidjson/error/en.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
+#include <regex>
 std::string trim(std::string strinput)
 {
     if (!strinput.empty())
@@ -34,6 +35,23 @@ void replaceChar(std::string& str, char targetChar, char replacementChar) {
             c = replacementChar;
         }
     }
+}
+void replaceString(std::string& str, std::string targetStr, std::string replacementStr) {
+    size_t index = str.find(targetStr);
+    if (index != std::string::npos) {
+        str.replace(index, targetStr.length(), replacementStr);
+    }
+}
+std::vector<std::string> SplitString(const std::string& str, const std::string& delimiter) {
+    std::vector<std::string> tokens;
+    std::stringstream ss(str);
+    std::string token;
+
+    while (std::getline(ss, token, delimiter[0])) {
+        replaceString(token, "\261", "");
+        tokens.push_back(token);
+    }
+    return tokens;
 }
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* response)
 {
@@ -145,6 +163,128 @@ void writeConfigFile(const std::string& filename, const std::map<std::string, st
     }
     else {
         std::cout << "无法打开配置文件。" << std::endl;
+    }
+}
+//判断短信内是否含有验证码
+bool JudgeSmsContentHasCode(std::string& smscontent) {
+    std::string filename = "config.txt";
+    std::map<std::string, std::string> configMap;
+    // 读取配置文件
+    configMap = readConfigFile(filename);
+    std::string smsKeysStr = configMap["smsCodeKey"];
+    if (smsKeysStr=="") {
+        smsKeysStr = "验证码±verification±code±인증±代码±随机码";
+        configMap.erase("smsCodeKey");
+        configMap["smsCodeKey"] = smsKeysStr;
+        writeConfigFile(filename, configMap);
+    }
+    std::string delimiter = "±";
+    std::vector<std::string> splitStrings = SplitString(smsKeysStr, delimiter);
+    for (const auto& t : splitStrings) {
+        size_t index = smscontent.find(t);
+        if (index != std::string::npos) {
+            replaceString(smscontent, t, " " + t + " ");
+            return true;
+        }
+        std::cout << t << std::endl;
+    }
+    return false;
+}
+int CountDigits(const std::string& str) {
+    int digitCount = 0;
+    for (char c : str) {
+        if (std::isdigit(c)) {
+            digitCount++;
+        }
+    }
+    return digitCount;
+}
+//获取验证码
+std::string GetCode(const std::string& smsContent) {
+    std::string pattern = R"(\b[A-Za-z0-9]{4,7}\b)";
+    std::regex regexPattern(pattern);
+
+    std::sregex_iterator iter(smsContent.begin(), smsContent.end(), regexPattern);
+    std::sregex_iterator end;
+    std::vector<std::string> matchs;
+    while (iter != end)
+    {
+        for (unsigned i = 0; i < iter->size(); ++i)
+        {
+            matchs.push_back((*iter)[i]);
+        }
+        ++iter;
+    }
+    if (matchs.size() > 1) {
+        int maxDigits = 0;
+        std::string maxDigitsString = "";
+        for (const auto& match : matchs) {
+            std::string currentString = match;
+            int digitCount = CountDigits(currentString);
+            if (digitCount > maxDigits) {
+                maxDigits = digitCount;
+                maxDigitsString = currentString;
+            }
+        }
+        return maxDigitsString;
+    }
+    else if (matchs.size() == 1) {
+        return matchs[0];
+    }
+    else {
+        return "";
+    }
+}
+//获取验证码来源
+std::string GetCodeSmsFrom(const std::string& smsContent) {
+    std::string pattern = R"(^\【(.*?)\】)";
+    std::regex regexPattern(pattern);
+    std::sregex_iterator iter(smsContent.begin(), smsContent.end(), regexPattern);
+    std::sregex_iterator end;
+    std::vector<std::string> matchs;
+
+    while (iter != end)
+    {
+        for (unsigned i = 0; i < iter->size(); ++i)
+        {
+            matchs.push_back((*iter)[i]);
+        }
+        ++iter;
+    }
+    if (matchs.size() > 0) {
+        return matchs[0];
+    }
+    else {
+        std::string pattern1 = R"(【([^【】]+)】$)";
+        std::regex regexPattern1(pattern1);
+        std::sregex_iterator iter1(smsContent.begin(), smsContent.end(), regexPattern1);
+        std::sregex_iterator end1;
+        std::vector<std::string> matchs1;
+        std::cout << (*iter1)[0] << std::endl;
+        while (iter1 != end1)
+        {
+            for (unsigned i = 0; i < iter1->size(); ++i)
+            {
+                matchs1.push_back((*iter1)[i]);
+            }
+            ++iter1;
+        }
+        if (matchs1.size() > 0) {
+            return matchs1[0];
+        }
+    }
+    return "";
+}
+//获取组合的验证码来源和验证码
+std::string GetSmsCodeStr(std::string smscontent) {
+    smscontent = trim(smscontent);
+    if (JudgeSmsContentHasCode(smscontent)) {
+        std::string smscode = trim(GetCode(smscontent));
+        if (smscode != "")
+        {
+            std::string CodeFrom = GetCodeSmsFrom(smscontent);
+            return CodeFrom + smscode;
+        }
     }
 }
 
@@ -278,9 +418,16 @@ void sendByPushPlus(std::string smsnumber, std::string smstext, std::string smsd
     std::string pushPlusToken = configMap["pushPlusToken"];
     // PushPlus的API端点URL
     std::string apiUrl = "https://www.pushplus.plus/send";
+    std::string SmsCodeStr = GetSmsCodeStr(smstext);
+
     // 推送消息的标题和内容
-    std::string title = "短信转发"+smsnumber;
+    std::string title = "短信转发" + smsnumber;
+    if (SmsCodeStr!="") {
+        title = SmsCodeStr + " " + title;
+    }
+    
     std::string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+
     // 构建POST请求的数据
     std::string postData = "token=" + pushPlusToken + "&title=" + title + "&content=" + smstext;
     // 初始化cURL库
@@ -751,6 +898,11 @@ void sendByBark(std::string smsnumber, std::string smstext, std::string smsdate)
         curl_easy_cleanup(curl);
     }
 }
+
+
+
+
+
 //处理用户选择的转发渠道
 std::string sendMethodGuide(std::string chooseOption)
 {
@@ -1015,6 +1167,7 @@ void checkConfig() {
             configFile << "DingTalkSecret = " << std::endl;
             configFile << "BarkUrl = " << std::endl;
             configFile << "BrakKey = " << std::endl;
+            configFile << "smsCodeKey = 验证码±verification±code±인증±代码±随机码" << std::endl;
             configFile.close();
         }
         else {
