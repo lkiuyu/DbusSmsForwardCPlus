@@ -42,7 +42,7 @@ void replaceString(std::string& str, std::string targetStr, std::string replacem
         str.replace(index, targetStr.length(), replacementStr);
     }
 }
-std::vector<std::string> SplitString(const std::string& str, const std::string& delimiter) {
+std::vector<std::string> SplitCodeKeyString(const std::string& str, const std::string& delimiter) {
     std::vector<std::string> tokens;
     std::stringstream ss(str);
     std::string token;
@@ -52,6 +52,21 @@ std::vector<std::string> SplitString(const std::string& str, const std::string& 
         tokens.push_back(token);
     }
     return tokens;
+}
+std::vector<std::string> splitCNString(const std::string& input, const std::string& delimiter) {
+    std::vector<std::string> result;
+    size_t startPos = 0;
+    size_t endPos = input.find(delimiter);
+    while (endPos != std::string::npos) {
+        std::string substr = input.substr(startPos, endPos - startPos);
+        result.push_back(substr);
+        startPos = endPos + delimiter.length();
+        endPos = input.find(delimiter, startPos);
+    }
+    // Add the remaining part of the input string
+    std::string substr = input.substr(startPos);
+    result.push_back(substr);
+    return result;
 }
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* response)
 {
@@ -128,6 +143,24 @@ std::string UrlDecode(const std::string& str)
     }
     return strTemp;
 }
+std::vector<std::string> extractAllContent(const std::string& input) {
+    std::vector<std::string> extractedContents;
+    size_t startPos = 0;
+    while (true) {
+        size_t openingPos = input.find("【", startPos);
+        size_t closingPos = input.find("】", startPos);
+        if (openingPos != std::string::npos && closingPos != std::string::npos && openingPos < closingPos) {
+            openingPos += 3; // Adjust to skip the opening bracket "【" (3 characters)
+            std::string content = input.substr(openingPos, closingPos - openingPos);
+            extractedContents.push_back(content);
+            startPos = closingPos + 3; // Move startPos to the character after the closing bracket "】" (3 characters)
+        }
+        else {
+            break; // Break the loop if no more brackets are found or in the wrong order
+        }
+    }
+    return extractedContents;
+}
 
 // 读取配置文件并存储到一个键值对映射中
 std::map<std::string, std::string> readConfigFile(const std::string& filename) {
@@ -179,14 +212,14 @@ bool JudgeSmsContentHasCode(std::string& smscontent) {
         writeConfigFile(filename, configMap);
     }
     std::string delimiter = "±";
-    std::vector<std::string> splitStrings = SplitString(smsKeysStr, delimiter);
+    std::vector<std::string> splitStrings = SplitCodeKeyString(smsKeysStr, delimiter);
     for (const auto& t : splitStrings) {
         size_t index = smscontent.find(t);
         if (index != std::string::npos) {
             replaceString(smscontent, t, " " + t + " ");
             return true;
         }
-        std::cout << t << std::endl;
+        //std::cout << t << std::endl;
     }
     return false;
 }
@@ -237,57 +270,34 @@ std::string GetCode(const std::string& smsContent) {
 }
 //获取验证码来源
 std::string GetCodeSmsFrom(const std::string& smsContent) {
-    std::string pattern = R"(^\【(.*?)\】)";
-    std::regex regexPattern(pattern);
-    std::sregex_iterator iter(smsContent.begin(), smsContent.end(), regexPattern);
-    std::sregex_iterator end;
-    std::vector<std::string> matchs;
 
-    while (iter != end)
-    {
-        for (unsigned i = 0; i < iter->size(); ++i)
-        {
-            matchs.push_back((*iter)[i]);
+    std::vector<std::string> extractedContents = extractAllContent(smsContent);
+    for (const auto& content : extractedContents) {
+        std::string delimiter = content;
+        std::vector<std::string> splitStrings = splitCNString(smsContent, delimiter);
+        if (splitStrings[0]=="【") {
+            return "【"+ content +"】";
         }
-        ++iter;
-    }
-    if (matchs.size() > 0) {
-        return matchs[0];
-    }
-    else {
-        std::string pattern1 = R"(【([^【】]+)】$)";
-        std::regex regexPattern1(pattern1);
-        std::sregex_iterator iter1(smsContent.begin(), smsContent.end(), regexPattern1);
-        std::sregex_iterator end1;
-        std::vector<std::string> matchs1;
-        std::cout << (*iter1)[0] << std::endl;
-        while (iter1 != end1)
-        {
-            for (unsigned i = 0; i < iter1->size(); ++i)
-            {
-                matchs1.push_back((*iter1)[i]);
-            }
-            ++iter1;
+        else if (splitStrings[splitStrings.size()-1] == "】") {
+            return "【" + content + "】";
         }
-        if (matchs1.size() > 0) {
-            return matchs1[0];
-        }
+        //std::cout << "Extracted content: " << content << std::endl;
     }
     return "";
 }
 //获取组合的验证码来源和验证码
-std::string GetSmsCodeStr(std::string smscontent) {
+std::string GetSmsCodeStr(std::string smscontent, std::string& smscode, std::string& CodeFrom) {
     smscontent = trim(smscontent);
     if (JudgeSmsContentHasCode(smscontent)) {
-        std::string smscode = trim(GetCode(smscontent));
+        smscode = trim(GetCode(smscontent));
         if (smscode != "")
         {
-            std::string CodeFrom = GetCodeSmsFrom(smscontent);
+            CodeFrom = GetCodeSmsFrom(smscontent);
             return CodeFrom + smscode;
         }
     }
+    return "";
 }
-
 
 //设置Email相关配置
 void SetupEmailInfo() {
@@ -342,8 +352,13 @@ void sendByEmail(std::string smsnumber, std::string smstext, std::string smsdate
     std::string sendEmial = configMap["sendEmial"];
     std::string reciveEmial = configMap["reciveEmial"];
     std::string emailcontent = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
-
+    std::string SmsCode;
+    std::string SmsCodeFrom;
+    std::string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
     std::string subject = "短信转发" + smsnumber;
+    if (SmsCodeStr != "") {
+        subject = SmsCodeStr + " " + subject;
+    }
     std::string smtpserver = "smtps://" + smtpHost ;
     //printf(smtpserver.c_str());
     std::string from = sendEmial;
@@ -418,7 +433,9 @@ void sendByPushPlus(std::string smsnumber, std::string smstext, std::string smsd
     std::string pushPlusToken = configMap["pushPlusToken"];
     // PushPlus的API端点URL
     std::string apiUrl = "https://www.pushplus.plus/send";
-    std::string SmsCodeStr = GetSmsCodeStr(smstext);
+    std::string SmsCode;
+    std::string SmsCodeFrom;
+    std::string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
 
     // 推送消息的标题和内容
     std::string title = "短信转发" + smsnumber;
@@ -510,9 +527,13 @@ void sendByWeCom(std::string smsnumber, std::string smstext, std::string smsdate
     int agentid = 0;
     sscanf(configMap["WeChatQYApplicationID"].c_str(), "%d", &agentid);
     std::string url = "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=" + corpid + "&corpsecret=" + corpsecret;
-    std::string smscontent = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
-
-
+    std::string smscontent = "短信转发\n发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    std::string SmsCode;
+    std::string SmsCodeFrom;
+    std::string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
+    if (SmsCodeStr != "") {
+        smscontent = SmsCodeStr + "\n" + smscontent;
+    }
     CURL* curl = curl_easy_init();
     if (curl)
     {
@@ -551,7 +572,7 @@ void sendByWeCom(std::string smsnumber, std::string smstext, std::string smsdate
                 jobj1.SetObject();
                 // 添加键值对
                 rapidjson::Document::AllocatorType& allocator1 = jobj1.GetAllocator();
-                std::string smsbody = "短信转发\n" + smscontent;
+                std::string smsbody =smscontent;
                 rapidjson::Value v(rapidjson::kStringType);
                 v.SetString(smsbody.c_str(), smsbody.length(), allocator1);
                 jobj1.AddMember("content", v, allocator1);
@@ -686,8 +707,15 @@ void sendByTGBot(std::string smsnumber, std::string smstext, std::string smsdate
     }
     url += "/bot" + TGBotToken + "/sendMessage?chat_id=" + TGBotChatID + "&text=";
     std::string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
-    url += UrlEncode("短信转发\n" + content);
-
+    std::string SmsCode;
+    std::string SmsCodeFrom;
+    std::string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
+    if (SmsCodeStr != "") {
+        url += UrlEncode(SmsCodeStr + "\n短信转发\n" + content);
+    }
+    else {
+        url += UrlEncode("短信转发\n" + content);
+    }
     //std::cout << url << std::endl;
 
     CURL* curl = curl_easy_init();
@@ -775,12 +803,18 @@ void sendByDingtalkBot(std::string smsnumber, std::string smstext, std::string s
     BIO_free_all(bmem);
     std::string sign = UrlEncodeUTF8(base64result);
     url += "&timestamp=" + timestamp1 + "&sign="+ sign;
-    std::string smscontent = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    std::string smscontent = "短信转发\n发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    std::string SmsCode;
+    std::string SmsCodeFrom;
+    std::string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
+    if (SmsCodeStr != "") {
+        smscontent = SmsCodeStr + "\n" + smscontent;
+    }
     rapidjson::Document msgContent;
     msgContent.SetObject();
     // 添加键值对
     rapidjson::Document::AllocatorType& allocator = msgContent.GetAllocator();
-    std::string smsbody = "短信转发\n" + smscontent;
+    std::string smsbody = smscontent;
     rapidjson::Value v(rapidjson::kStringType);
     v.SetString(smsbody.c_str(), smsbody.length(), allocator);
     msgContent.AddMember("content", v, allocator);
@@ -862,10 +896,23 @@ void sendByBark(std::string smsnumber, std::string smstext, std::string smsdate)
     configMap = readConfigFile(filename);
     std::string BarkUrl = configMap["BarkUrl"];
     std::string BrakKey = configMap["BrakKey"];
+    std::string SmsCode;
+    std::string SmsCodeFrom;
+    std::string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
+    std::string title = "短信转发" + smsnumber;
     std::string url = BarkUrl + "/" + BrakKey + "/";
     std::string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
     url += UrlEncode(content);
-    url += "?group=" + smsnumber + "&title=" + "短信转发" + smsnumber;
+    if (SmsCodeStr != "") {
+        title = SmsCodeStr + " " + title;
+        url += "?group=" + smsnumber + "&title=" + UrlEncode(title) + "&autoCopy=1&copy=" + SmsCode;
+    }
+    else
+    {
+        url += "?group=" + smsnumber + "&title=" + title;
+    }
+    std::cout << url << std::endl;
+
     CURL* curl = curl_easy_init();
     if (curl) {
         // 设置Get请求的URL和数据
@@ -898,9 +945,6 @@ void sendByBark(std::string smsnumber, std::string smstext, std::string smsdate)
         curl_easy_cleanup(curl);
     }
 }
-
-
-
 
 
 //处理用户选择的转发渠道
@@ -1092,7 +1136,6 @@ void getAndSendSmsContent(std::string sendMethodGuideResult, const char *smsPath
         getAndSendSmsContent(sendMethodGuideResult,smsPath);
     }
 }
-
 //处理dbus获取到的消息并转发
 void parseDBusMessageAndSend(DBusMessage* message,std::string sendMethodGuideResult)
 {
@@ -1138,7 +1181,6 @@ void parseDBusMessageAndSend(DBusMessage* message,std::string sendMethodGuideRes
     }
 }
 
-
 //检查配置文件是否存在并初始化
 void checkConfig() {
     std::string fileName = "config.txt";
@@ -1176,9 +1218,6 @@ void checkConfig() {
 
     }
 }
-
-
-
 
 int main(int argc, char* argv[])
 {
