@@ -46,10 +46,22 @@ sudo ./DbusSmsForwardCPlus -fB
 sudo ./DbusSmsForwardCPlus -sS
 跳过运行模式选择直接进入短信发送界面
 
+输入
+sudo ./DbusSmsForwardCPlus --configfile=/root/config.txt
+可加载自定义路径的配置文件
+
+举例
+sudo ./DbusSmsForwardCPlus -fB --configfile=/root/config.txt
+启动到bark转发模式，并使用root路径下的config.txt配置文件
+
 openwrt系统下
 
 直接安装releases页提供的软件包，终端内输入DbusSmsForwardCPlus即可运行，无需sudo ./
 程序运行生成的配置文件存储路径会在你运行命令时所处的路径，比如你当前在/root/的路径下下输入命令运行了程序，那配置文件就会在root目录下
+在rc.local文件设置自启动时可加载自定义路径的配置文件
+举例在rc.loacl中设置自启动的命令
+( DbusSmsForwardCPlus -fE --configfile=/root/config.txt > /dev/null ) &
+
 
 # 参考
 1. [ModemManager API document](https://www.freedesktop.org/software/ModemManager/api/latest/)

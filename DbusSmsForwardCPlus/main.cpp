@@ -161,9 +161,16 @@ std::vector<std::string> extractAllContent(const std::string& input) {
     }
     return extractedContents;
 }
-
+std::string configFilePath = "";
 // 读取配置文件并存储到一个键值对映射中
-std::map<std::string, std::string> readConfigFile(const std::string& filename) {
+std::map<std::string, std::string> readConfigFile() {
+    std::string filename = "";
+    if (configFilePath!="") {
+        filename = configFilePath;
+    }
+    else {
+        filename = "config.txt";
+    }
     std::map<std::string, std::string> configMap;
     std::ifstream configFile(filename);
 
@@ -183,7 +190,14 @@ std::map<std::string, std::string> readConfigFile(const std::string& filename) {
     return configMap;
 }
 // 将配置项写入配置文件
-void writeConfigFile(const std::string& filename, const std::map<std::string, std::string>& configMap) {
+void writeConfigFile(const std::map<std::string, std::string>& configMap) {
+    std::string filename = "";
+    if (configFilePath != "") {
+        filename = configFilePath;
+    }
+    else {
+        filename = "config.txt";
+    }
     std::ofstream configFileClear(filename, std::ofstream::trunc);
     configFileClear.close();
     std::ofstream configFile(filename);
@@ -203,13 +217,13 @@ bool JudgeSmsContentHasCode(std::string& smscontent) {
     std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string smsKeysStr = configMap["smsCodeKey"];
     if (smsKeysStr=="") {
         smsKeysStr = "验证码±verification±code±인증±代码±随机码";
         configMap.erase("smsCodeKey");
         configMap["smsCodeKey"] = smsKeysStr;
-        writeConfigFile(filename, configMap);
+        writeConfigFile(configMap);
     }
     std::string delimiter = "±";
     std::vector<std::string> splitStrings = SplitCodeKeyString(smsKeysStr, delimiter);
@@ -301,10 +315,9 @@ std::string GetSmsCodeStr(std::string smscontent, std::string& smscode, std::str
 
 //设置Email相关配置
 void SetupEmailInfo() {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string smtpHost = configMap["smtpHost"];
     std::string smtpPort = configMap["smtpPort"];
     std::string emailKey = configMap["emailKey"];
@@ -336,15 +349,14 @@ void SetupEmailInfo() {
         std::getline(std::cin, reciveEmial);
         configMap["reciveEmial"] = reciveEmial;
 
-        writeConfigFile(filename, configMap);
+        writeConfigFile(configMap);
     }
 }
 //使用Email转发消息
 void sendByEmail(std::string smsnumber, std::string smstext, std::string smsdate) {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string smtpHost = configMap["smtpHost"];
     int smtpPort = 0;
     sscanf(configMap["smtpPort"].c_str(), "%d", &smtpPort);
@@ -411,25 +423,23 @@ void sendByEmail(std::string smsnumber, std::string smstext, std::string smsdate
 
 //设置pushplus相关配置
 void SetupPushPlusInfo() {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string pushPlusToken = configMap["pushPlusToken"];
     if (pushPlusToken=="") {
         configMap.erase("pushPlusToken");
         printf("首次运行请输入PushPlusToken\n");
         std::getline(std::cin, pushPlusToken);
         configMap["pushPlusToken"] = pushPlusToken;
-        writeConfigFile(filename, configMap);
+        writeConfigFile(configMap);
     }
 }
 //使用pushplus转发消息
 void sendByPushPlus(std::string smsnumber, std::string smstext, std::string smsdate) {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string pushPlusToken = configMap["pushPlusToken"];
     // PushPlus的API端点URL
     std::string apiUrl = "https://www.pushplus.plus/send";
@@ -491,10 +501,9 @@ void sendByPushPlus(std::string smsnumber, std::string smstext, std::string smsd
 
 //设置企业微信相关配置
 void SetupWeComInfo() {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string corpid = configMap["WeChatQYID"];
     std::string appsecret = configMap["WeChatQYApplicationSecret"];
     std::string appid = configMap["WeChatQYApplicationID"];
@@ -512,15 +521,14 @@ void SetupWeComInfo() {
         printf("请输入自建应用密钥\n");
         std::getline(std::cin, appsecret);
         configMap["WeChatQYApplicationSecret"] = appsecret;
-        writeConfigFile(filename, configMap);
+        writeConfigFile(configMap);
     }
 }
 //使用企业微信转发消息
 void sendByWeCom(std::string smsnumber, std::string smstext, std::string smsdate) {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
 
     std::string corpid = configMap["WeChatQYID"];
     std::string corpsecret = configMap["WeChatQYApplicationSecret"];
@@ -643,10 +651,9 @@ void sendByWeCom(std::string smsnumber, std::string smstext, std::string smsdate
 
 //设置TelegramBot相关配置
 void SetupTGBotInfo() {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string TGBotToken = configMap["TGBotToken"];
     std::string TGBotChatID = configMap["TGBotChatID"];
     std::string IsEnableCustomTGBotApi = configMap["IsEnableCustomTGBotApi"];
@@ -683,15 +690,14 @@ void SetupTGBotInfo() {
             IsEnableCustomTGBotApi = "false";
             configMap["IsEnableCustomTGBotApi"] = IsEnableCustomTGBotApi;
         }
-        writeConfigFile(filename, configMap);
+        writeConfigFile(configMap);
     }
 }
 //使用TelegramBot转发消息
 void sendByTGBot(std::string smsnumber, std::string smstext, std::string smsdate) {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string TGBotToken = configMap["TGBotToken"];
     std::string TGBotChatID = configMap["TGBotChatID"];
     std::string IsEnableCustomTGBotApi = configMap["IsEnableCustomTGBotApi"];
@@ -753,10 +759,9 @@ void sendByTGBot(std::string smsnumber, std::string smstext, std::string smsdate
 
 //设置DingTalkBot相关配置
 void SetupDingtalkBotMsg() {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string DingTalkAccessToken = configMap["DingTalkAccessToken"];
     std::string DingTalkSecret = configMap["DingTalkSecret"];
     if (DingTalkAccessToken == ""&& DingTalkSecret == "") {
@@ -768,15 +773,14 @@ void SetupDingtalkBotMsg() {
         printf("请输入钉钉机器人加签secret\n");
         std::getline(std::cin, DingTalkSecret);
         configMap["DingTalkSecret"] = DingTalkSecret;
-        writeConfigFile(filename, configMap);
+        writeConfigFile(configMap);
     }
 }
 //使用DingTalkBot转发消息
 void sendByDingtalkBot(std::string smsnumber, std::string smstext, std::string smsdate) {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string DingTalkAccessToken = configMap["DingTalkAccessToken"];
     std::string DingTalkSecret = configMap["DingTalkSecret"];
     std::string DING_TALK_BOT_URL = "https://oapi.dingtalk.com/robot/send?access_token=";
@@ -868,10 +872,9 @@ void sendByDingtalkBot(std::string smsnumber, std::string smstext, std::string s
 
 //设置Bark相关配置
 void SetupBarkInfo() {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
 
     std::string BarkUrl = configMap["BarkUrl"];
     std::string BrakKey = configMap["BrakKey"];
@@ -885,15 +888,14 @@ void SetupBarkInfo() {
         printf("请输入Bark推送key\n");
         std::getline(std::cin, BrakKey);
         configMap["BrakKey"] = BrakKey;
-        writeConfigFile(filename, configMap);
+        writeConfigFile(configMap);
     }
 }
 //使用Bark转发消息
 void sendByBark(std::string smsnumber, std::string smstext, std::string smsdate) {
-    std::string filename = "config.txt";
     std::map<std::string, std::string> configMap;
     // 读取配置文件
-    configMap = readConfigFile(filename);
+    configMap = readConfigFile();
     std::string BarkUrl = configMap["BarkUrl"];
     std::string BrakKey = configMap["BrakKey"];
     std::string SmsCode;
@@ -1182,14 +1184,13 @@ void parseDBusMessageAndSend(DBusMessage* message,std::string sendMethodGuideRes
 }
 
 //检查配置文件是否存在并初始化
-void checkConfig() {
-    std::string fileName = "config.txt";
-    std::ifstream file(fileName);
-    if (!file)
+void checkConfig(std::string configFilePath) {
+    //std::string fileName = "config.txt";
+    //std::ifstream file(configFilePath);
+    if (configFilePath=="")
     {
         // 配置文件不存在，创建它
         std::ofstream configFile("config.txt"); // 创建配置文件
-
         if (configFile.is_open()) {
             // 写入配置项
             configFile << "smtpHost = " << std::endl;
@@ -1259,11 +1260,19 @@ int main(int argc, char* argv[])
         {
             startGuideChoiseNum = "2";
         }
-        break;
+        else if (std::string(argv[i]).find("--configfile=") != std::string::npos)
+        {
+            std::string inputpath = std::string(argv[i]);
+            replaceString(inputpath, "--configfile=", "");
+            std::ifstream file(inputpath);
+            if (file) {
+                configFilePath = inputpath;
+            }
+        }
     }
     std::string StartGuideResult = onStartGuide(startGuideChoiseNum);
     if (StartGuideResult == "1") {
-        checkConfig();
+        checkConfig(configFilePath);
         std::string sendMethodGuideResult = sendMethodGuide(sendMethodGuideChoiseNum);
         printf("正在运行. 按下 Ctrl-C 停止.\n");
         DBusError error;
