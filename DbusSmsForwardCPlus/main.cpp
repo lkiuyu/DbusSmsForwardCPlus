@@ -948,16 +948,52 @@ void sendByBark(std::string smsnumber, std::string smstext, std::string smsdate)
     }
 }
 
+//设置shell相关配置
+void SetupShellInfo() {
+    std::map<std::string, std::string> configMap;
+    // 读取配置文件
+    configMap = readConfigFile();
+    std::string ShellPath = configMap["ShellPath"];
+
+    if (ShellPath == "") {
+        configMap.erase("ShellPath");
+        printf("首次运行请输入shell脚本路径\n");
+        std::getline(std::cin, ShellPath);
+        configMap["ShellPath"] = ShellPath;
+        writeConfigFile(configMap);
+    }
+}
+//使用shell转发消息
+void sendByShell(std::string smsnumber, std::string smstext, std::string smsdate) {
+    std::map<std::string, std::string> configMap;
+    // 读取配置文件
+    configMap = readConfigFile();
+    std::string ShellPath = configMap["ShellPath"];
+    std::string SmsCode;
+    std::string SmsCodeFrom;
+    std::string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
+
+    ShellPath += " \"" + smsnumber + "\" \"" + smsdate +"\" \""+ smstext+"\" \""+ SmsCode+"\" \""+ SmsCodeFrom+"\"";
+
+    int result = std::system(ShellPath.c_str());
+    if (result == 0) {
+        std::cout << "Shell script executed successfully." << std::endl;
+    }
+    else {
+        std::cout << "Failed to execute shell script." << std::endl;
+    }
+}
+
 
 //处理用户选择的转发渠道
 std::string sendMethodGuide(std::string chooseOption)
 {
     if (chooseOption == "")
     {
-        printf("请选择转发渠道：1.邮箱转发，2.pushplus转发，3.企业微信转发，4.TG机器人转发，5.钉钉转发，6.Bark转发\n");
+        printf("请选择转发渠道：1.邮箱转发，2.pushplus转发，3.企业微信转发，4.TG机器人转发，5.钉钉转发，6.Bark转发，7.Shell脚本转发\n");
         std::getline(std::cin, chooseOption);
     }
-    if (chooseOption == "1" || chooseOption == "2" || chooseOption == "3" || chooseOption == "4" || chooseOption == "5" || chooseOption == "6")
+    if (chooseOption == "1" || chooseOption == "2" || chooseOption == "3" || chooseOption == "4" || chooseOption == "5" || chooseOption == "6" || chooseOption == "7")
     {
         if (chooseOption == "1")
         {
@@ -989,6 +1025,11 @@ std::string sendMethodGuide(std::string chooseOption)
             SetupBarkInfo();
             return "6";
         }
+        else if (chooseOption == "7")
+        {
+            SetupShellInfo();
+            return "7";
+        }
         else
         {
             return "";
@@ -996,7 +1037,7 @@ std::string sendMethodGuide(std::string chooseOption)
     }
     else
     {
-        printf("请输入1或2或3或4或5或6\n");
+        printf("请输入1或2或3或4或5或6或7\n");
         return sendMethodGuide("");
     }
 }
@@ -1030,6 +1071,10 @@ void sendSms(std::string sendMethodGuideResult, std::string telnum, std::string 
     if (sendMethodGuideResult == "6")
     {
         sendByBark(telnum, smscontent, smsdate);
+    }
+    if (sendMethodGuideResult == "7")
+    {
+        sendByShell(telnum, smscontent, smsdate);
     }
 }
 std::string onStartGuide(std::string chooseOption)
@@ -1210,6 +1255,7 @@ void checkConfig(std::string configFilePath) {
             configFile << "DingTalkSecret = " << std::endl;
             configFile << "BarkUrl = " << std::endl;
             configFile << "BrakKey = " << std::endl;
+            configFile << "ShellPath = " << std::endl;
             configFile << "smsCodeKey = 验证码±verification±code±인증±代码±随机码" << std::endl;
             configFile.close();
         }
@@ -1255,6 +1301,11 @@ int main(int argc, char* argv[])
         {
             startGuideChoiseNum = "1";
             sendMethodGuideChoiseNum = "6";
+        }
+        else if (std::string(argv[i]) == "-fS")
+        {
+            startGuideChoiseNum = "1";
+            sendMethodGuideChoiseNum = "7";
         }
         else if (std::string(argv[i]) == "-sS")
         {
