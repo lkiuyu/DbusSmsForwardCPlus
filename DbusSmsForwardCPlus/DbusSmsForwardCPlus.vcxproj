@@ -126,7 +126,7 @@
     </CustomBuildStep>
     <Link>
       <AdditionalLibraryDirectories>/usr/lib/aarch64-linux-gnu;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>-ldbus-1;-lcurl;-lcrypto;-lssl;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>-ldbus-1;-lcurl;-lcrypto;-lssl;-lpthread;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -135,7 +135,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <Link>
       <AdditionalLibraryDirectories>/usr/lib/aarch64-linux-gnu;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>-ldbus-1;-lcurl;-lcrypto;-lssl;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>-ldbus-1;-lcurl;-lcrypto;-lssl;-lpthread;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CustomBuildStep>
       <Inputs>dbus-1;%(Inputs)</Inputs>

@@ -1499,36 +1499,39 @@ void checkConfig(string configFilePath) {
     //ifstream file(configFilePath);
     if (configFilePath=="")
     {
-        // 配置文件不存在，创建它
-        ofstream configFile("config.txt"); // 创建配置文件
-        if (configFile.is_open()) {
-            // 写入配置项
-            configFile << "smtpHost = " << endl;
-            configFile << "smtpPort = " << endl;
-            configFile << "emailKey = " << endl;
-            configFile << "sendEmial = " << endl;
-            configFile << "reciveEmial = " << endl;
-            configFile << "pushPlusToken = " << endl;
-            configFile << "WeChatQYID = " << endl;
-            configFile << "WeChatQYApplicationSecret = " << endl;
-            configFile << "WeChatQYApplicationID = " << endl;
-            configFile << "TGBotToken = " << endl;
-            configFile << "TGBotChatID = " << endl;
-            configFile << "IsEnableCustomTGBotApi = " << endl;
-            configFile << "CustomTGBotApi = " << endl;
-            configFile << "DingTalkAccessToken = " << endl;
-            configFile << "DingTalkSecret = " << endl;
-            configFile << "BarkUrl = " << endl;
-            configFile << "BrakKey = " << endl;
-            configFile << "ShellPath = " << endl;
-            configFile << "apiPort = " << endl;
-            configFile << "smsCodeKey = 验证码±verification±code±인증±代码±随机码" << endl;
-            configFile.close();
+        string fileName = "config.txt";
+        ifstream file(fileName);
+        if (!file) {
+            // 配置文件不存在，创建它
+            ofstream configFile("config.txt"); // 创建配置文件
+            if (configFile.is_open()) {
+                // 写入配置项
+                configFile << "smtpHost = " << endl;
+                configFile << "smtpPort = " << endl;
+                configFile << "emailKey = " << endl;
+                configFile << "sendEmial = " << endl;
+                configFile << "reciveEmial = " << endl;
+                configFile << "pushPlusToken = " << endl;
+                configFile << "WeChatQYID = " << endl;
+                configFile << "WeChatQYApplicationSecret = " << endl;
+                configFile << "WeChatQYApplicationID = " << endl;
+                configFile << "TGBotToken = " << endl;
+                configFile << "TGBotChatID = " << endl;
+                configFile << "IsEnableCustomTGBotApi = " << endl;
+                configFile << "CustomTGBotApi = " << endl;
+                configFile << "DingTalkAccessToken = " << endl;
+                configFile << "DingTalkSecret = " << endl;
+                configFile << "BarkUrl = " << endl;
+                configFile << "BrakKey = " << endl;
+                configFile << "ShellPath = " << endl;
+                configFile << "apiPort = " << endl;
+                configFile << "smsCodeKey = 验证码±verification±code±인증±代码±随机码" << endl;
+                configFile.close();
+            }
+            else {
+                cout << "无法打开配置文件。" << endl;
+            }
         }
-        else {
-            cout << "无法打开配置文件。" << endl;
-        }
-
     }
 }
 
