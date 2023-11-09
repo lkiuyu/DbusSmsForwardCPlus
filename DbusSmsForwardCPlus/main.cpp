@@ -1457,7 +1457,7 @@ void sendSms(string telNumber, string smsText,string target) {
 void handle_request(const Request& req, Response& res) {
     // 获取参数值
     string telnum = req.get_param_value("telnum");
-    string smstext = req.get_param_value("smstext");
+    string smstext = UrlDecode(req.get_param_value("smstext"));
     sendSms(telnum, smstext, "api");
     // 构造响应
     string response_text = "ok";
