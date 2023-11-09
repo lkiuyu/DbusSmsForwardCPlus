@@ -72,6 +72,16 @@ sudo ./DbusSmsForwardCPlus --configfile=/root/config.txt --sendsmsapi=enable
 sudo ./DbusSmsForwardCPlus --sendsmsapi=enable
 开启发送短信webapi接口
 
+**接口调用方法：**
+
+使用Get方式调用，使用两个参数分别为
+
+telnum 发送号码
+smstext 短信内容
+
+浏览器访问链接示例
+http://ip:端口/api?telnum=10010&smstext=1071
+
 
 **shell转发模式注意事项：**
 
