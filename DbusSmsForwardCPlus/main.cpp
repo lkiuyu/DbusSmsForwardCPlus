@@ -1485,11 +1485,87 @@ void startSendSmsApi()
     int sapiPort = 0;
     sscanf(apiPort.c_str(), "%d", &sapiPort);
     Server svr;
+
+    svr.Get("/", [](const Request& req, Response& res) {
+        string htmlContent = R"(<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+  <style>
+  html, body {
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f7f7f7;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 90vw;
+            max-width: 500px;
+        }
+        input[type='text'], textarea {
+          width: 80%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+</style>
+    <title>短信发送</title>
+    <script>
+        function sendSMS() {
+            var phoneNumber = document.getElementById('phone').value;
+            var message = encodeURIComponent(document.getElementById('message').value);
+			var xhr = new XMLHttpRequest();
+			var url=window.location.protocol+'//'+window.location.hostname+':'+window.location.port+'/api?telnum='+phoneNumber+'&smstext='+message;
+		    xhr.open('GET', url, true);
+		    xhr.onreadystatechange = function () 
+			{
+				if (xhr.readyState === 4 && xhr.status === 200) {
+				  alert('已发送');
+				}
+		    };
+		    xhr.send();
+        }
+    </script>
+</head>
+<body>
+      <div class='container'>
+    <h1>短信发送</h1>
+    <form>
+        <label for='phone'>收信号码:</label>
+        <input type='text' id='phone' name='phone' required><br><br>
+        <label for='message'>短信内容:</label>
+        <textarea id='message' name='message' required></textarea><br><br>
+        <button type='button' onclick='sendSMS()'>发送</button>
+    </form>
+      </div>
+</body>
+</html>)";
+        res.set_content(htmlContent, "text/html");
+        });
     // 处理 GET 请求，路径为 /api
     svr.Get("/api", [](const Request& req, Response& res) {
         handle_request(req, res);
         });
-    cout << "短信发送webapi接口已运行在"+apiPort+"端口" << endl;
+    cout << "短信发送webapi接口已运行在" + apiPort + "端口" << endl;
     svr.listen("0.0.0.0", sapiPort);
 }
 
@@ -1593,19 +1669,19 @@ int main(int argc, char* argv[])
         {
             string apiswitch = string(argv[i]);
             replaceString(apiswitch, "--sendsmsapi=", "");
-            if (apiswitch=="enable") {
+            if (apiswitch == "enable") {
                 if (startGuideChoiseNum == "1") {
                     startGuideChoiseNum = "3";
                 }
                 else {
                     startGuideChoiseNum = "4";
                 }
-                
+
             }
         }
     }
     string StartGuideResult = onStartGuide(startGuideChoiseNum);
-    if (StartGuideResult == "1"|| StartGuideResult == "3" || StartGuideResult == "4") {
+    if (StartGuideResult == "1" || StartGuideResult == "3" || StartGuideResult == "4") {
         checkConfig(configFilePath);
         if (StartGuideResult == "3") {
             //创建一个线程来运行接口
@@ -1624,16 +1700,16 @@ int main(int argc, char* argv[])
             string sendMethodGuideResult = sendMethodGuide(sendMethodGuideChoiseNum);
             monitorDbus(sendMethodGuideResult);
         }
-        
+
     }
     else if (StartGuideResult == "2") {  //以下为调用dbus发送短信
         printf("请输入收信号码：\n");
         string telNumber = "";
         getline(cin, telNumber);
         printf("请输入短信内容\n");
-        string smsText ="";
+        string smsText = "";
         getline(cin, smsText);
-        sendSms(telNumber, smsText,"command");
+        sendSms(telNumber, smsText, "command");
     }
     return 0;
 }
