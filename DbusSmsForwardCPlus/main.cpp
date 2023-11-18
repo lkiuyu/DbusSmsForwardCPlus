@@ -22,6 +22,7 @@
 #include <regex>
 #include "httplib.h"
 #include <thread>
+#include <unistd.h>
 
 using namespace httplib;
 using namespace std;
@@ -149,6 +150,16 @@ string UrlDecode(const string& str)
     }
     return strTemp;
 }
+string GetDeviceHostName() {
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) == 0) {
+        return hostname;
+    }
+    else {
+        return "";
+    }
+}
+
 vector<string> extractAllContent(const string& input) {
     vector<string> extractedContents;
     size_t startPos = 0;
@@ -319,6 +330,29 @@ string GetSmsCodeStr(string smscontent, string& smscode, string& CodeFrom) {
     return "";
 }
 
+//设置转发设备名称
+void SetupDeviceName(string deviceName) {
+    map<string, string> configMap;
+    // 读取配置文件
+    configMap = readConfigFile();
+    string ForwardDeviceName = configMap["ForwardDeviceName"];
+    if (ForwardDeviceName == "") {
+        configMap.erase("ForwardDeviceName");
+        if (deviceName != "") {
+            ForwardDeviceName = deviceName;
+        }
+        else {
+            printf("初次运行是否需要设置转发设备名称?(留空回车则默认动态读取设备主机名)：\n");
+            getline(cin, ForwardDeviceName);
+            if (ForwardDeviceName == "") {
+                ForwardDeviceName = "*Host*Name*";
+            }
+        }
+        configMap["ForwardDeviceName"] = ForwardDeviceName;
+        writeConfigFile(configMap);
+    }
+}
+
 //设置Email相关配置
 void SetupEmailInfo() {
     map<string, string> configMap;
@@ -359,7 +393,7 @@ void SetupEmailInfo() {
     }
 }
 //使用Email转发消息
-void sendByEmail(string smsnumber, string smstext, string smsdate) {
+void sendByEmail(string smsnumber, string smstext, string smsdate, string devicename) {
     map<string, string> configMap;
     // 读取配置文件
     configMap = readConfigFile();
@@ -369,7 +403,7 @@ void sendByEmail(string smsnumber, string smstext, string smsdate) {
     string emailKey = configMap["emailKey"];
     string sendEmial = configMap["sendEmial"];
     string reciveEmial = configMap["reciveEmial"];
-    string emailcontent = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    string emailcontent = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "转发设备:" + devicename + "\n" + "短信内容:" + smstext;
     string SmsCode;
     string SmsCodeFrom;
     string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
@@ -442,7 +476,7 @@ void SetupPushPlusInfo() {
     }
 }
 //使用pushplus转发消息
-void sendByPushPlus(string smsnumber, string smstext, string smsdate) {
+void sendByPushPlus(string smsnumber, string smstext, string smsdate, string devicename) {
     map<string, string> configMap;
     // 读取配置文件
     configMap = readConfigFile();
@@ -459,10 +493,10 @@ void sendByPushPlus(string smsnumber, string smstext, string smsdate) {
         title = SmsCodeStr + " " + title;
     }
     
-    string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "转发设备:" + devicename + "\n" + "短信内容:" + smstext;
 
     // 构建POST请求的数据
-    string postData = "token=" + pushPlusToken + "&title=" + title + "&content=" + smstext;
+    string postData = "token=" + pushPlusToken + "&title=" + title + "&content=" + content;
     // 初始化cURL库
     CURL* curl = curl_easy_init();
     if (curl)
@@ -531,7 +565,7 @@ void SetupWeComInfo() {
     }
 }
 //使用企业微信转发消息
-void sendByWeCom(string smsnumber, string smstext, string smsdate) {
+void sendByWeCom(string smsnumber, string smstext, string smsdate, string devicename) {
     map<string, string> configMap;
     // 读取配置文件
     configMap = readConfigFile();
@@ -541,7 +575,7 @@ void sendByWeCom(string smsnumber, string smstext, string smsdate) {
     int agentid = 0;
     sscanf(configMap["WeChatQYApplicationID"].c_str(), "%d", &agentid);
     string url = "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=" + corpid + "&corpsecret=" + corpsecret;
-    string smscontent = "短信转发\n发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    string smscontent = "短信转发\n发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "转发设备:" + devicename + "\n" + "短信内容:" + smstext;
     string SmsCode;
     string SmsCodeFrom;
     string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
@@ -700,7 +734,7 @@ void SetupTGBotInfo() {
     }
 }
 //使用TelegramBot转发消息
-void sendByTGBot(string smsnumber, string smstext, string smsdate) {
+void sendByTGBot(string smsnumber, string smstext, string smsdate, string devicename) {
     map<string, string> configMap;
     // 读取配置文件
     configMap = readConfigFile();
@@ -718,7 +752,7 @@ void sendByTGBot(string smsnumber, string smstext, string smsdate) {
         url = "https://api.telegram.org";
     }
     url += "/bot" + TGBotToken + "/sendMessage?chat_id=" + TGBotChatID + "&text=";
-    string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "转发设备:" + devicename + "\n" + "短信内容:" + smstext;
     string SmsCode;
     string SmsCodeFrom;
     string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
@@ -783,7 +817,7 @@ void SetupDingtalkBotMsg() {
     }
 }
 //使用DingTalkBot转发消息
-void sendByDingtalkBot(string smsnumber, string smstext, string smsdate) {
+void sendByDingtalkBot(string smsnumber, string smstext, string smsdate, string devicename) {
     map<string, string> configMap;
     // 读取配置文件
     configMap = readConfigFile();
@@ -813,7 +847,7 @@ void sendByDingtalkBot(string smsnumber, string smstext, string smsdate) {
     BIO_free_all(bmem);
     string sign = UrlEncodeUTF8(base64result);
     url += "&timestamp=" + timestamp1 + "&sign="+ sign;
-    string smscontent = "短信转发\n发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    string smscontent = "短信转发\n发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "转发设备:" + devicename + "\n" + "短信内容:" + smstext;
     string SmsCode;
     string SmsCodeFrom;
     string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
@@ -898,7 +932,7 @@ void SetupBarkInfo() {
     }
 }
 //使用Bark转发消息
-void sendByBark(string smsnumber, string smstext, string smsdate) {
+void sendByBark(string smsnumber, string smstext, string smsdate, string devicename) {
     map<string, string> configMap;
     // 读取配置文件
     configMap = readConfigFile();
@@ -909,7 +943,7 @@ void sendByBark(string smsnumber, string smstext, string smsdate) {
     string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
     string title = "短信转发" + smsnumber;
     string url = BarkUrl + "/" + BrakKey + "/";
-    string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smstext;
+    string content = "发信电话:" + smsnumber + "\n" + "时间:" + smsdate + "\n" + "转发设备:" + devicename + "\n" + "短信内容:" + smstext;
     url += UrlEncode(content);
     if (SmsCodeStr != "") {
         title = SmsCodeStr + " " + title;
@@ -970,7 +1004,7 @@ void SetupShellInfo() {
     }
 }
 //使用shell转发消息
-void sendByShell(string smsnumber, string smstext, string smsdate) {
+void sendByShell(string smsnumber, string smstext, string smsdate, string devicename) {
     map<string, string> configMap;
     // 读取配置文件
     configMap = readConfigFile();
@@ -979,7 +1013,7 @@ void sendByShell(string smsnumber, string smstext, string smsdate) {
     string SmsCodeFrom;
     string SmsCodeStr = GetSmsCodeStr(smstext, SmsCode, SmsCodeFrom);
 
-    ShellPath += " \"" + smsnumber + "\" \"" + smsdate +"\" \""+ smstext+"\" \""+ SmsCode+"\" \""+ SmsCodeFrom+"\"";
+    ShellPath += " \"" + smsnumber + "\" \"" + smsdate +"\" \""+ smstext+"\" \""+ SmsCode+"\" \""+ SmsCodeFrom+"\" \""+ devicename+"\"";
 
     int result = system(ShellPath.c_str());
     if (result == 0) {
@@ -1049,6 +1083,14 @@ string sendMethodGuide(string chooseOption)
 }
 void fordardSendSms(string sendMethodGuideResult, string telnum, string smscontent, string smsdate)
 {
+    map<string, string> configMap;
+    // 读取配置文件
+    configMap = readConfigFile();
+    string ForwardDeviceName = configMap["ForwardDeviceName"];
+    if (ForwardDeviceName=="*Host*Name*") {
+        ForwardDeviceName = GetDeviceHostName();
+    }
+
     char target = 'T';
     char replacement = ' ';
     replaceChar(smsdate, target, replacement);
@@ -1056,31 +1098,31 @@ void fordardSendSms(string sendMethodGuideResult, string telnum, string smsconte
     printf(body.c_str());
     if (sendMethodGuideResult == "1")
     {
-        sendByEmail(telnum, smscontent, smsdate);
+        sendByEmail(telnum, smscontent, smsdate, ForwardDeviceName);
     }
     if (sendMethodGuideResult == "2")
     {
-        sendByPushPlus(telnum, smscontent, smsdate);
+        sendByPushPlus(telnum, smscontent, smsdate, ForwardDeviceName);
     }
     if (sendMethodGuideResult == "3")
     {
-        sendByWeCom(telnum, smscontent, smsdate);
+        sendByWeCom(telnum, smscontent, smsdate, ForwardDeviceName);
     }
     if (sendMethodGuideResult == "4")
     {
-        sendByTGBot(telnum, smscontent, smsdate);
+        sendByTGBot(telnum, smscontent, smsdate, ForwardDeviceName);
     }
     if (sendMethodGuideResult == "5")
     {
-        sendByDingtalkBot(telnum, smscontent, smsdate);
+        sendByDingtalkBot(telnum, smscontent, smsdate, ForwardDeviceName);
     }
     if (sendMethodGuideResult == "6")
     {
-        sendByBark(telnum, smscontent, smsdate);
+        sendByBark(telnum, smscontent, smsdate, ForwardDeviceName);
     }
     if (sendMethodGuideResult == "7")
     {
-        sendByShell(telnum, smscontent, smsdate);
+        sendByShell(telnum, smscontent, smsdate, ForwardDeviceName);
     }
 }
 string onStartGuide(string chooseOption)
@@ -1601,6 +1643,7 @@ void checkConfig(string configFilePath) {
                 configFile << "BrakKey = " << endl;
                 configFile << "ShellPath = " << endl;
                 configFile << "apiPort = " << endl;
+                configFile << "ForwardDeviceName = " << endl;
                 configFile << "smsCodeKey = 验证码±verification±code±인증±代码±随机码" << endl;
                 configFile.close();
             }
@@ -1615,6 +1658,7 @@ int main(int argc, char* argv[])
 {
     string startGuideChoiseNum = "";
     string sendMethodGuideChoiseNum = "";
+    string deviceName = "";
     for (int i = 1; i < argc; ++i)
     {
         if (string(argv[i]) == "-fE")
@@ -1676,13 +1720,16 @@ int main(int argc, char* argv[])
                 else {
                     startGuideChoiseNum = "4";
                 }
-
             }
         }
     }
+    if (startGuideChoiseNum == "1" || startGuideChoiseNum == "3") {
+        deviceName = "*Host*Name*";
+    }
     string StartGuideResult = onStartGuide(startGuideChoiseNum);
-    if (StartGuideResult == "1" || StartGuideResult == "3" || StartGuideResult == "4") {
+    if (StartGuideResult == "1" || StartGuideResult == "3") {
         checkConfig(configFilePath);
+        SetupDeviceName(deviceName);
         if (StartGuideResult == "3") {
             //创建一个线程来运行接口
             setupApiPort();
@@ -1692,15 +1739,10 @@ int main(int argc, char* argv[])
             server_thread1.join();
             server_thread.join();
         }
-        else if (StartGuideResult == "4") {
-            setupApiPort();
-            startSendSmsApi();
-        }
         else {
             string sendMethodGuideResult = sendMethodGuide(sendMethodGuideChoiseNum);
             monitorDbus(sendMethodGuideResult);
         }
-
     }
     else if (StartGuideResult == "2") {  //以下为调用dbus发送短信
         printf("请输入收信号码：\n");
@@ -1710,6 +1752,10 @@ int main(int argc, char* argv[])
         string smsText = "";
         getline(cin, smsText);
         sendSms(telNumber, smsText, "command");
+    }
+    else if (StartGuideResult == "4") {
+        setupApiPort();
+        startSendSmsApi();
     }
     return 0;
 }

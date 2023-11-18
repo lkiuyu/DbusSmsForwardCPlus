@@ -70,7 +70,7 @@ sudo ./DbusSmsForwardCPlus --configfile=/root/config.txt --sendsmsapi=enable
 使用root路径下的config.txt配置文件，并开启发送短信webapi接口
 
 sudo ./DbusSmsForwardCPlus --sendsmsapi=enable
-开启发送短信webapi接口
+开启发送短信webapi接口并开启发送短信web页面
 
 **接口调用方法：**
 
@@ -82,10 +82,14 @@ smstext 短信内容
 浏览器访问链接示例
 http://ip:端口/api?telnum=10010&smstext=1071
 
+**短信发送web页面访问地址：**
+
+浏览器访问链接
+http://ip:端口/
 
 **shell转发模式注意事项：**
 
-shell转发模式下，程序会调用你指定路径的shell脚本文件，程序会传入五个参数，分别为如下
+shell转发模式下，程序会调用你指定路径的shell脚本文件，程序会传入六个参数，分别为如下
 
 telnum 发信电话号码
 
@@ -97,7 +101,9 @@ smscode 短信验证码（如果存在的话）
 
 smscodefrom 验证码来源（如果存在的话）
 
-在shell脚本内可对这5个参数进行自定义组合，发送到你自定义的渠道，目前在ShellExample文件夹内存放了一份发送到pushplus的shell脚本示例以供参考
+devicename 转发设备名称
+
+在shell脚本内可对这6个参数进行自定义组合，发送到你自定义的渠道，目前在ShellExample文件夹内存放了一份发送到pushplus的shell脚本示例以供参考
 
 **openwrt系统下注意事项：**
 
