@@ -1144,7 +1144,7 @@ string onStartGuide(string chooseOption)
 
 }
 
-void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath) {
+void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath,string forwardStorageType) {
     DBusError GetSmsContentError;
     dbus_error_init(&GetSmsContentError);
     DBusConnection* GetSmsContentConnection = dbus_bus_get(DBUS_BUS_SYSTEM, &GetSmsContentError);
@@ -1171,6 +1171,8 @@ void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath) {
     const char* telnum;
     const char* smsdate;
     const char* smscontent;
+    const char* storage;
+    bool isIgnore = false;
     if (returnType == DBUS_TYPE_ARRAY)
     {
         // 迭代处理数组中的字典项
@@ -1211,29 +1213,55 @@ void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath) {
                     dbus_message_iter_recurse(&dictIter, &variantIter);
                     dbus_message_iter_get_basic(&variantIter, &smsdate);
                 }
+                else if (keyName == "Storage") {
+                    // 移动到字典项的值
+                    dbus_message_iter_next(&dictIter);
+                    DBusMessageIter variantIter;
+                    dbus_message_iter_recurse(&dictIter, &variantIter);
+                    dbus_message_iter_get_basic(&variantIter, &storage);
+                    try {
+                        if (string(storage) == forwardStorageType) {
+                            isIgnore = false;
+                        }
+                        else 
+                        {
+                            isIgnore = true;
+                        }
+                    }
+                    catch (const std::exception& e) {
+                        isIgnore = false;
+                    }
+                }
             }
             // 移动到下一个字典项
             dbus_message_iter_next(&arrayIter);
         }
     }
-    if (string(smscontent)!="") {
-
-        fordardSendSms(sendMethodGuideResult, string(telnum), string(smscontent), string(smsdate));
-        // 释放消息资源
-        dbus_message_unref(reply);
-        dbus_message_unref(smsContentMessage);
-        // 关闭DBus连接
-        dbus_connection_unref(GetSmsContentConnection);
-    }
-    else
-    {
-        this_thread::sleep_for(chrono::milliseconds(100));
-        getAndSendSmsContent(sendMethodGuideResult,smsPath);
+    if (!isIgnore) {
+        if (string(smscontent) != "")
+        {
+            fordardSendSms(sendMethodGuideResult, string(telnum), string(smscontent), string(smsdate));
+            // 释放消息资源
+            dbus_message_unref(reply);
+            dbus_message_unref(smsContentMessage);
+            // 关闭DBus连接
+            dbus_connection_unref(GetSmsContentConnection);
+        }
+        else
+        {
+            this_thread::sleep_for(chrono::milliseconds(100));
+            getAndSendSmsContent(sendMethodGuideResult, smsPath, forwardStorageType);
+        }
     }
 }
 //处理dbus获取到的消息并转发
 void parseDBusMessageAndSend(DBusMessage* message,string sendMethodGuideResult)
 {
+    map<string, string> configMap;
+    // 读取配置文件
+    configMap = readConfigFile();
+    string forwardStorageType = configMap["forwardStorageType"];
+
     // 获取接口名称
     const char* interface = dbus_message_get_interface(message);
     string interfaceName(interface);
@@ -1270,7 +1298,7 @@ void parseDBusMessageAndSend(DBusMessage* message,string sendMethodGuideResult)
 
             if (isReceived) {
                 printf("SmsPath:\n%s\n", smsPath);
-                getAndSendSmsContent(sendMethodGuideResult, smsPath);
+                getAndSendSmsContent(sendMethodGuideResult, smsPath, forwardStorageType);
             }
         }
     }
@@ -1645,6 +1673,7 @@ void checkConfig(string configFilePath) {
                 configFile << "apiPort = " << endl;
                 configFile << "ForwardDeviceName = " << endl;
                 configFile << "smsCodeKey = 验证码±verification±code±인증±代码±随机码" << endl;
+                configFile << "forwardStorageType = me" << endl;
                 configFile.close();
             }
             else {
