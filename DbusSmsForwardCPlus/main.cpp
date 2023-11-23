@@ -1144,7 +1144,7 @@ string onStartGuide(string chooseOption)
 
 }
 
-void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath,string forwardStorageType) {
+void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath, uint32_t storageTypeNum) {
     DBusError GetSmsContentError;
     dbus_error_init(&GetSmsContentError);
     DBusConnection* GetSmsContentConnection = dbus_bus_get(DBUS_BUS_SYSTEM, &GetSmsContentError);
@@ -1171,7 +1171,6 @@ void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath,stri
     const char* telnum;
     const char* smsdate;
     const char* smscontent;
-    const char* storage;
     bool isIgnore = false;
     if (returnType == DBUS_TYPE_ARRAY)
     {
@@ -1214,21 +1213,21 @@ void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath,stri
                     dbus_message_iter_get_basic(&variantIter, &smsdate);
                 }
                 else if (keyName == "Storage") {
+
+                    uint32_t storage;
                     // 移动到字典项的值
                     dbus_message_iter_next(&dictIter);
                     DBusMessageIter variantIter;
                     dbus_message_iter_recurse(&dictIter, &variantIter);
                     dbus_message_iter_get_basic(&variantIter, &storage);
-                    try {
-                        if (string(storage) == forwardStorageType) {
-                            isIgnore = false;
-                        }
-                        else 
-                        {
-                            isIgnore = true;
-                        }
+                    if (storageTypeNum== 100) {
+                        isIgnore = false;
                     }
-                    catch (const std::exception& e) {
+                    else if (storage == storageTypeNum) {
+                        isIgnore = true;
+                    }
+                    else
+                    {
                         isIgnore = false;
                     }
                 }
@@ -1250,8 +1249,11 @@ void getAndSendSmsContent(string sendMethodGuideResult, const char *smsPath,stri
         else
         {
             this_thread::sleep_for(chrono::milliseconds(100));
-            getAndSendSmsContent(sendMethodGuideResult, smsPath, forwardStorageType);
+            getAndSendSmsContent(sendMethodGuideResult, smsPath, storageTypeNum);
         }
+    }
+    else {
+        cout << "已过滤不转发" << endl;
     }
 }
 //处理dbus获取到的消息并转发
@@ -1260,7 +1262,29 @@ void parseDBusMessageAndSend(DBusMessage* message,string sendMethodGuideResult)
     map<string, string> configMap;
     // 读取配置文件
     configMap = readConfigFile();
-    string forwardStorageType = configMap["forwardStorageType"];
+    string forwardStorageType = configMap["forwardIgnoreStorageType"];
+    uint32_t storageTypeNum = 100;
+    if (forwardStorageType == "unknown") {
+        storageTypeNum = 0;
+    }
+    else if (forwardStorageType == "sm") {
+        storageTypeNum = 1;
+    }
+    else  if (forwardStorageType == "me") {
+        storageTypeNum = 2;
+    }
+    else  if (forwardStorageType == "mt") {
+        storageTypeNum = 3;
+    }
+    else  if (forwardStorageType == "sr") {
+        storageTypeNum = 4;
+    }
+    else  if (forwardStorageType == "bm") {
+        storageTypeNum = 5;
+    }
+    else  if (forwardStorageType == "ta") {
+        storageTypeNum = 6;
+    }
 
     // 获取接口名称
     const char* interface = dbus_message_get_interface(message);
@@ -1298,7 +1322,7 @@ void parseDBusMessageAndSend(DBusMessage* message,string sendMethodGuideResult)
 
             if (isReceived) {
                 printf("SmsPath:\n%s\n", smsPath);
-                getAndSendSmsContent(sendMethodGuideResult, smsPath, forwardStorageType);
+                getAndSendSmsContent(sendMethodGuideResult, smsPath, storageTypeNum);
             }
         }
     }
@@ -1673,7 +1697,7 @@ void checkConfig(string configFilePath) {
                 configFile << "apiPort = " << endl;
                 configFile << "ForwardDeviceName = " << endl;
                 configFile << "smsCodeKey = 验证码±verification±code±인증±代码±随机码" << endl;
-                configFile << "forwardStorageType = me" << endl;
+                configFile << "forwardIgnoreStorageType = sm" << endl;
                 configFile.close();
             }
             else {
