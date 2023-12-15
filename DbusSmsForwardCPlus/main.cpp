@@ -159,6 +159,12 @@ string GetDeviceHostName() {
         return "";
     }
 }
+void removeDuplicates(std::vector<std::string>& vec) {
+    std::unordered_set<std::string> uniqueSet;
+    vec.erase(std::remove_if(vec.begin(), vec.end(), [&uniqueSet](const std::string& str) {
+        return !uniqueSet.insert(str).second;
+        }), vec.end());
+}
 
 vector<string> extractAllContent(const string& input) {
     vector<string> extractedContents;
@@ -179,6 +185,7 @@ vector<string> extractAllContent(const string& input) {
     return extractedContents;
 }
 string configFilePath = "";
+vector<string> splitStrings;
 // 读取配置文件并存储到一个键值对映射中
 map<string, string> readConfigFile() {
     string filename = "";
@@ -431,6 +438,7 @@ void sendByEmail(string smsnumber, string smstext, string smsdate, string device
     SimpleSslSmtpEmail m_ssl_mail(smtpHost, "465");
     base = &m_ssl_mail;
     base->SendEmail(from, passs, to, subject, strMessage);
+    printf("Email转发成功\n");
     //base->SendEmail(from, passs, vecTo, subject, strMessage, attachment, ccList);//加密的发送，支持抄送、附件等
 
 
@@ -1024,16 +1032,45 @@ void sendByShell(string smsnumber, string smstext, string smsdate, string device
     }
 }
 
+//初始化设置多渠道转发
+void SetupMulitForward() {
+    printf("请正确输入需要使用的转发渠道编号，以空格分隔（举例：1 2 3 5）\n");
+    string mulitForwardChooseOption = "";
+    getline(cin, mulitForwardChooseOption);
+    string delimiter = " ";
+    splitStrings = SplitCodeKeyString(mulitForwardChooseOption, delimiter);
+    removeDuplicates(splitStrings);
+    bool smfFlag = true;
+    for (const auto& t : splitStrings) {
+        if (t == "1" || t == "2" || t == "3" || t == "4" || t == "5" || t == "6" || t == "7") {
+            continue;
+        }
+        else {
+            smfFlag = false;
+            break;
+        }
+    }
+    if (smfFlag) {
+        for (const auto& t : splitStrings) {
+            sendMethodGuide(t);
+        }
+    }
+    else
+    {
+        SetupMulitForward();
+    }
+}
+
 
 //处理用户选择的转发渠道
 string sendMethodGuide(string chooseOption)
 {
     if (chooseOption == "")
     {
-        printf("请选择转发渠道：1.邮箱转发，2.pushplus转发，3.企业微信转发，4.TG机器人转发，5.钉钉转发，6.Bark转发，7.Shell脚本转发\n");
+        printf("请选择转发渠道：1.邮箱转发，2.pushplus转发，3.企业微信转发，4.TG机器人转发，5.钉钉转发，6.Bark转发，7.Shell脚本转发，8.自选多渠道转发\n");
         getline(cin, chooseOption);
     }
-    if (chooseOption == "1" || chooseOption == "2" || chooseOption == "3" || chooseOption == "4" || chooseOption == "5" || chooseOption == "6" || chooseOption == "7")
+    if (chooseOption == "1" || chooseOption == "2" || chooseOption == "3" || chooseOption == "4" || chooseOption == "5" || chooseOption == "6" || chooseOption == "7" || chooseOption == "8")
     {
         if (chooseOption == "1")
         {
@@ -1070,6 +1107,11 @@ string sendMethodGuide(string chooseOption)
             SetupShellInfo();
             return "7";
         }
+        else if (chooseOption == "8")
+        {
+            SetupMulitForward();
+            return "8";
+        }
         else
         {
             return "";
@@ -1077,25 +1119,13 @@ string sendMethodGuide(string chooseOption)
     }
     else
     {
-        printf("请输入1或2或3或4或5或6或7\n");
+        printf("请输入1或2或3或4或5或6或7或8\n");
         return sendMethodGuide("");
     }
 }
-void fordardSendSms(string sendMethodGuideResult, string telnum, string smscontent, string smsdate)
-{
-    map<string, string> configMap;
-    // 读取配置文件
-    configMap = readConfigFile();
-    string ForwardDeviceName = configMap["ForwardDeviceName"];
-    if (ForwardDeviceName=="*Host*Name*") {
-        ForwardDeviceName = GetDeviceHostName();
-    }
 
-    char target = 'T';
-    char replacement = ' ';
-    replaceChar(smsdate, target, replacement);
-    string body = "发信电话:" + telnum + "\n" + "时间:" + smsdate + "\n" + "短信内容:" + smscontent + "\n";
-    printf(body.c_str());
+void processFordardSendSmsOption(string sendMethodGuideResult, string telnum, string smscontent, string smsdate, string ForwardDeviceName)
+{
     if (sendMethodGuideResult == "1")
     {
         sendByEmail(telnum, smscontent, smsdate, ForwardDeviceName);
@@ -1124,6 +1154,24 @@ void fordardSendSms(string sendMethodGuideResult, string telnum, string smsconte
     {
         sendByShell(telnum, smscontent, smsdate, ForwardDeviceName);
     }
+    if (sendMethodGuideResult == "8")
+    {
+        for (const auto& t : splitStrings) {
+            processFordardSendSmsOption(t,telnum, smscontent, smsdate, ForwardDeviceName);
+        }
+    }
+}
+
+void fordardSendSms(string sendMethodGuideResult, string telnum, string smscontent, string smsdate)
+{
+    map<string, string> configMap;
+    // 读取配置文件
+    configMap = readConfigFile();
+    string ForwardDeviceName = configMap["ForwardDeviceName"];
+    if (ForwardDeviceName=="*Host*Name*") {
+        ForwardDeviceName = GetDeviceHostName();
+    }
+    processFordardSendSmsOption(sendMethodGuideResult, telnum, smscontent, smsdate, ForwardDeviceName);
 }
 string onStartGuide(string chooseOption)
 {
@@ -1551,7 +1599,7 @@ void sendSms(string telNumber, string smsText,string target) {
 void handle_request(const Request& req, Response& res) {
     // 获取参数值
     string telnum = req.get_param_value("telnum");
-    string smstext = UrlDecode(req.get_param_value("smstext"));
+    string smstext = req.get_param_value("smstext");
     sendSms(telnum, smstext, "api");
     // 构造响应
     string response_text = "ok";
@@ -1625,7 +1673,7 @@ void startSendSmsApi()
     <title>短信发送</title>
     <script>
         function sendSMS() {
-            var phoneNumber = document.getElementById('phone').value;
+            var phoneNumber = encodeURIComponent(document.getElementById('phone').value);
             var message = encodeURIComponent(document.getElementById('message').value);
 			var xhr = new XMLHttpRequest();
 			var url=window.location.protocol+'//'+window.location.hostname+':'+window.location.port+'/api?telnum='+phoneNumber+'&smstext='+message;
