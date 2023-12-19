@@ -79,8 +79,17 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ConfigFileProcess\configfileprocess.h" />
+    <ClInclude Include="DbusSmsMethod\dbussmsmethod.h" />
+    <ClInclude Include="InitWebPageAndApi\initwebpageandapi.h" />
+    <ClInclude Include="ProcessInitArgs\processinitargs.h" />
+    <ClInclude Include="ProcessSetup\processsetup.h" />
     <ClInclude Include="httplib.h" />
     <ClInclude Include="mail.h" />
+    <ClInclude Include="MyHelper\myhelper.h" />
+    <ClInclude Include="ProcessSmsSend\sendoptionprocess.h" />
+    <ClInclude Include="ProcessSmsSend\smsforwardmethod.h" />
+    <ClInclude Include="ProcessUserChoose\processuserchoose.h" />
     <ClInclude Include="rapidjson\allocators.h" />
     <ClInclude Include="rapidjson\cursorstreamwrapper.h" />
     <ClInclude Include="rapidjson\document.h" />
@@ -119,6 +128,7 @@
     <ClInclude Include="rapidjson\stringbuffer.h" />
     <ClInclude Include="rapidjson\uri.h" />
     <ClInclude Include="rapidjson\writer.h" />
+    <ClInclude Include="SmsCodeProcess\smscodeprocess.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <CustomBuildStep>

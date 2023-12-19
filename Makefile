@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=DbusSmsForwardCPlus
-PKG_RELEASE:=1.0.6
+PKG_RELEASE:=1.0.7
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk

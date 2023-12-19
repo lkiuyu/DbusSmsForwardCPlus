@@ -58,10 +58,17 @@ sudo ./DbusSmsForwardCPlus --configfile=/root/config.txt
 sudo ./DbusSmsForwardCPlus --sendsmsapi=enable
 可开启短信发送webapi接口
 
+输入
+sudo ./DbusSmsForwardCPlus -fE -fP -fD
+可同时将接收的短信转发到email、pushplus和钉钉机器人，转发哪几个渠道取决于你添加的-f*指令
+
 **举例**
 
 sudo ./DbusSmsForwardCPlus -fB --configfile=/root/config.txt
 启动到bark转发模式，并使用root路径下的config.txt配置文件
+
+sudo ./DbusSmsForwardCPlus -fB -fP -fD --configfile=/root/config.txt
+启动多渠道转发模式，使用Bark、pushplus和钉钉机器人转发，并使用root路径下的config.txt配置文件
 
 sudo ./DbusSmsForwardCPlus -fB --configfile=/root/config.txt --sendsmsapi=enable
 启动到bark转发模式，使用root路径下的config.txt配置文件，并开启发送短信webapi接口
